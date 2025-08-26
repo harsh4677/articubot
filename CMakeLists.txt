@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.5)
-project(my_bot)
+project(articubot)
 
 # Default to C99
 if(NOT CMAKE_C_STANDARD)
@@ -32,8 +32,11 @@ if(BUILD_TESTING)
   ament_lint_auto_find_test_dependencies()
 endif()
 
-install(
-  DIRECTORY config description launch worlds
+install(DIRECTORY
+  launch
+  description
+  worlds
+  config
   DESTINATION share/${PROJECT_NAME}
 )
 
