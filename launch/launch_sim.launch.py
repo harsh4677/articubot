@@ -13,6 +13,8 @@ def generate_launch_description():
 
     package_name = 'articubot'
 
+    world_path = os.path.join(get_package_share_directory(package_name), 'worlds', 'articubot_world.sdf')
+
     # Include the robot_state_publisher launch file
     rsp = IncludeLaunchDescription(
         PythonLaunchDescriptionSource([
@@ -26,7 +28,7 @@ def generate_launch_description():
         PythonLaunchDescriptionSource(
             os.path.join(get_package_share_directory('ros_gz_sim'), 'launch', 'gz_sim.launch.py')
         ),
-        launch_arguments={'gz_args': '-r empty.sdf'}.items(),
+        launch_arguments={'gz_args': '-r ' + world_path}.items(),
     )
 
     # Run the spawner node
@@ -38,10 +40,20 @@ def generate_launch_description():
                         output='screen')
 
     # Bridge ROS 2 /cmd_vel messages to Gazebo /cmd_vel messages
-    bridge = Node(
+    cmd_vel_bridge = Node(
         package='ros_gz_bridge',
         executable='parameter_bridge',
         arguments=['/cmd_vel@geometry_msgs/msg/Twist@gz.msgs.Twist'],
+        output='screen'
+    )
+
+    # NEW BRIDGE FOR ODOMETRY AND TF
+    odom_tf_bridge = Node(
+        package='ros_gz_bridge',
+        executable='parameter_bridge',
+        arguments=['/odom@nav_msgs/msg/Odometry@gz.msgs.Odometry',
+                   '/tf@tf2_msgs/msg/TFMessage@gz.msgs.Pose_V'],
+        remappings=[('/odom', 'odom'), ('/tf', 'tf')],
         output='screen'
     )
 
@@ -50,5 +62,6 @@ def generate_launch_description():
         rsp,
         gz_sim,
         spawn_entity,
-        bridge
+        cmd_vel_bridge,
+        odom_tf_bridge
     ])

@@ -2,6 +2,7 @@
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="robot">
 
     <xacro:include filename="robot_core.xacro"/>
+    <xacro:include filename="lidar.xacro"/>
 
     <gazebo>
         <plugin
@@ -11,7 +12,13 @@
             <right_joint>right_wheel_joint</right_joint>
             <wheel_separation>0.35</wheel_separation>
             <wheel_radius>0.05</wheel_radius>
-            <topic>/cmd_vel</topic> </plugin>
+            <topic>/cmd_vel</topic>
+
+            <odom_topic>/odom</odom_topic>
+            <tf_topic>/tf</tf_topic>
+            <frame_id>odom</frame_id>
+            <child_frame_id>base_footprint</child_frame_id>
+        </plugin>
     </gazebo>
 
 </robot>
