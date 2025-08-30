@@ -40,22 +40,37 @@ def generate_launch_description():
                         output='screen')
 
     # Bridge ROS 2 /cmd_vel messages to Gazebo /cmd_vel messages
-    cmd_vel_bridge = Node(
-        package='ros_gz_bridge',
-        executable='parameter_bridge',
-        arguments=['/cmd_vel@geometry_msgs/msg/Twist@gz.msgs.Twist'],
-        output='screen'
-    )
+    # cmd_vel_bridge = Node(
+    #     package='ros_gz_bridge',
+    #     executable='parameter_bridge',
+    #     arguments=['/cmd_vel@geometry_msgs/msg/Twist@gz.msgs.Twist'],
+    #     output='screen'
+    # )
 
     # NEW BRIDGE FOR ODOMETRY AND TF
-    odom_tf_bridge = Node(
-        package='ros_gz_bridge',
-        executable='parameter_bridge',
-        arguments=['/odom@nav_msgs/msg/Odometry@gz.msgs.Odometry',
-                   '/tf@tf2_msgs/msg/TFMessage@gz.msgs.Pose_V'],
-        remappings=[('/odom', 'odom'), ('/tf', 'tf')],
-        output='screen'
+    # odom_tf_bridge = Node(
+    #     package='ros_gz_bridge',
+    #     executable='parameter_bridge',
+    #     arguments=['/odom@nav_msgs/msg/Odometry@gz.msgs.Odometry',
+    #                '/tf@tf2_msgs/msg/TFMessage@gz.msgs.Pose_V'],
+    #     remappings=[('/odom', 'odom'), ('/tf', 'tf')],
+    #     output='screen'
+    # )
+
+    # ADD these two spawner nodes
+    diff_drive_spawner = Node(
+        package="controller_manager",
+        executable="spawner",
+        arguments=["diff_cont"],
     )
+
+    joint_broad_spawner = Node(
+        package="controller_manager",
+        executable="spawner",
+        arguments=["joint_broad"],
+    )
+
+
 
     laser_bridge = Node(
         package='ros_gz_bridge',
@@ -64,13 +79,31 @@ def generate_launch_description():
         output='screen'
     )
 
+    # NEW: Camera Bridge
+    camera_bridge = Node(
+        package='ros_gz_bridge',
+        executable='parameter_bridge',
+        arguments=[
+            '/camera@sensor_msgs/msg/Image@gz.msgs.Image',
+            '/camera_info@sensor_msgs/msg/CameraInfo@gz.msgs.CameraInfo'
+        ],
+        remappings=[
+            ('/camera', '/camera/image_raw'),
+            ('/camera_info', '/camera/camera_info')
+        ],
+        output='screen'
+    )
+
     delayed_actions = TimerAction(
         period=5.0, 
         actions=[
             spawn_entity,
-            cmd_vel_bridge,
-            odom_tf_bridge,
-            laser_bridge
+            # cmd_vel_bridge,
+            # odom_tf_bridge,
+            diff_drive_spawner,
+            joint_broad_spawner,
+            laser_bridge,
+            camera_bridge
         ]
     )
 
