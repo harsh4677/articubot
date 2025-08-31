@@ -56,6 +56,13 @@ def generate_launch_description():
     #     remappings=[('/odom', 'odom'), ('/tf', 'tf')],
     #     output='screen'
     # )
+    clock_bridge = Node(
+    package='ros_gz_bridge',
+    executable='parameter_bridge',
+    arguments=['/clock@rosgraph_msgs/msg/Clock@gz.msgs.Clock'],
+    output='screen'
+)
+
 
     # ADD these two spawner nodes
     diff_drive_spawner = Node(
@@ -69,8 +76,6 @@ def generate_launch_description():
         executable="spawner",
         arguments=["joint_broad"],
     )
-
-
 
     laser_bridge = Node(
         package='ros_gz_bridge',
@@ -100,10 +105,11 @@ def generate_launch_description():
             spawn_entity,
             # cmd_vel_bridge,
             # odom_tf_bridge,
-            diff_drive_spawner,
             joint_broad_spawner,
+            diff_drive_spawner,
             laser_bridge,
-            camera_bridge
+            camera_bridge,
+            clock_bridge
         ]
     )
 

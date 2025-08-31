@@ -81,6 +81,8 @@
 
     <gazebo reference="left_wheel">
         <material>Gazebo/Blue</material>
+        <mu1>0.8</mu1>
+        <mu2>0.8</mu2>
     </gazebo>
 
     <joint name="right_wheel_joint" type="continuous">
@@ -109,6 +111,8 @@
 
     <gazebo reference="right_wheel">
         <material>Gazebo/Blue</material>
+        <mu1>0.8</mu1>
+        <mu2>0.8</mu2>
     </gazebo>
 
     <joint name="caster_wheel_joint" type="fixed">
@@ -139,5 +143,6 @@
         <mu1 value="0.001"/>
         <mu2 value="0.001"/>
     </gazebo>
+
 
 </robot>
