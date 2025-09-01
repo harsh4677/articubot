@@ -1,70 +1,52 @@
+# /home/harsh/dev_ws/src/articubot/launch/launch_sim.launch.py
+
 import os
 
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import IncludeLaunchDescription, TimerAction
+from launch.actions import IncludeLaunchDescription, TimerAction, RegisterEventHandler, DeclareLaunchArgument
+from launch.event_handlers import OnProcessExit
 from launch.launch_description_sources import PythonLaunchDescriptionSource
+from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 
 def generate_launch_description():
-    """
-    Generates the launch description for spawning the robot in Gazebo.
-    """
-
     package_name = 'articubot'
 
-    world_path = os.path.join(get_package_share_directory(package_name), 'worlds', 'articubot_world.sdf')
+    # World Argument
+    default_world = os.path.join(get_package_share_directory(package_name), 'worlds', 'articubot_world.sdf')
+    world = LaunchConfiguration('world')
+    world_arg = DeclareLaunchArgument(
+        'world',
+        default_value=default_world,
+        description='Full path to the world file to load'
+    )
 
-    # Include the robot_state_publisher launch file
+    # RSP Launch Include
     rsp = IncludeLaunchDescription(
         PythonLaunchDescriptionSource([
             os.path.join(get_package_share_directory(package_name), 'launch', 'rsp.launch.py')
         ]),
-        launch_arguments={'use_sim_time': 'true'}.items()
+        launch_arguments={'use_sim_time': 'true', 'use_ros2_control': 'true'}.items()
     )
 
-    # Include the Gazebo launch file
-    gz_sim = IncludeLaunchDescription(
+    # Gazebo Launch Include
+    gazebo = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             os.path.join(get_package_share_directory('ros_gz_sim'), 'launch', 'gz_sim.launch.py')
         ),
-        launch_arguments={'gz_args': '-r ' + world_path}.items(),
+        launch_arguments={'gz_args': ['-r -v4 ', world], 'on_exit_shutdown': 'true'}.items()
     )
 
-    # Run the spawner node
-    # Run the spawner node from the gazebo_ros package
-    spawn_entity = Node(package='ros_gz_sim', executable='create',
-                        arguments=['-topic', 'robot_description',
-                                '-name', 'my_bot',
-                                '-z', '0.1'],
-                        output='screen')
-
-    # Bridge ROS 2 /cmd_vel messages to Gazebo /cmd_vel messages
-    # cmd_vel_bridge = Node(
-    #     package='ros_gz_bridge',
-    #     executable='parameter_bridge',
-    #     arguments=['/cmd_vel@geometry_msgs/msg/Twist@gz.msgs.Twist'],
-    #     output='screen'
-    # )
-
-    # NEW BRIDGE FOR ODOMETRY AND TF
-    # odom_tf_bridge = Node(
-    #     package='ros_gz_bridge',
-    #     executable='parameter_bridge',
-    #     arguments=['/odom@nav_msgs/msg/Odometry@gz.msgs.Odometry',
-    #                '/tf@tf2_msgs/msg/TFMessage@gz.msgs.Pose_V'],
-    #     remappings=[('/odom', 'odom'), ('/tf', 'tf')],
-    #     output='screen'
-    # )
-    clock_bridge = Node(
-    package='ros_gz_bridge',
-    executable='parameter_bridge',
-    arguments=['/clock@rosgraph_msgs/msg/Clock@gz.msgs.Clock'],
-    output='screen'
-)
-
-
-    # ADD these two spawner nodes
+    # Node to spawn the robot entity in Gazebo
+    spawn_entity = Node(
+        package='ros_gz_sim',
+        executable='create',
+        arguments=['-topic', 'robot_description', '-name', 'my_bot', '-z', '0.1'],
+        output='screen'
+    )
+    
+    # Controller Spawners
     diff_drive_spawner = Node(
         package="controller_manager",
         executable="spawner",
@@ -77,45 +59,44 @@ def generate_launch_description():
         arguments=["joint_broad"],
     )
 
-    laser_bridge = Node(
-        package='ros_gz_bridge',
-        executable='parameter_bridge',
-        arguments=['/scan@sensor_msgs/msg/LaserScan@gz.msgs.LaserScan'],
+    # Gazebo <-> ROS Bridge
+    bridge_params = os.path.join(get_package_share_directory(package_name), 'config', 'gz_bridge.yaml')
+    ros_gz_bridge = Node(
+        package="ros_gz_bridge",
+        executable="parameter_bridge",
+        arguments=['--ros-args', '-p', f'config_file:={bridge_params}'],
         output='screen'
     )
 
-    # NEW: Camera Bridge
-    camera_bridge = Node(
-        package='ros_gz_bridge',
-        executable='parameter_bridge',
-        arguments=[
-            '/camera@sensor_msgs/msg/Image@gz.msgs.Image',
-            '/camera_info@sensor_msgs/msg/CameraInfo@gz.msgs.CameraInfo'
-        ],
-        remappings=[
-            ('/camera', '/camera/image_raw'),
-            ('/camera_info', '/camera/camera_info')
-        ],
-        output='screen'
+    # --- CORRECTED: Simplified Launch Logic ---
+    # Use a timer to delay the robot spawn, giving Gazebo time to load.
+    # This is more robust than chaining events off an IncludeLaunchDescription.
+    delayed_spawn_and_bridge = TimerAction(
+        period=5.0,
+        actions=[spawn_entity, ros_gz_bridge]
     )
 
-    delayed_actions = TimerAction(
-        period=5.0, 
-        actions=[
-            spawn_entity,
-            # cmd_vel_bridge,
-            # odom_tf_bridge,
-            joint_broad_spawner,
-            diff_drive_spawner,
-            laser_bridge,
-            camera_bridge,
-            clock_bridge
-        ]
+    # Chain the controller spawners to run after the robot is spawned.
+    # This ensures the /controller_manager service is available.
+    spawn_controllers = RegisterEventHandler(
+        event_handler=OnProcessExit(
+            target_action=spawn_entity,
+            on_exit=[joint_broad_spawner],
+        )
     )
 
-    # Launch everything
+    load_diff_drive_controller = RegisterEventHandler(
+        event_handler=OnProcessExit(
+            target_action=joint_broad_spawner,
+            on_exit=[diff_drive_spawner],
+        )
+    )
+
     return LaunchDescription([
         rsp,
-        gz_sim,
-        delayed_actions,
+        world_arg,
+        gazebo,
+        delayed_spawn_and_bridge,
+        spawn_controllers,
+        load_diff_drive_controller
     ])

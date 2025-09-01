@@ -1,7 +1,9 @@
 <?xml version="1.0"?>
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="robot">
 
-    <ros2_control name="gazeboSystem" type="system">
+    <xacro:arg name="controller_config_path" default=""/>
+
+    <ros2_control name="GazeboSystem" type="system">
         <hardware>
             <plugin>gz_ros2_control/GazeboSimSystem</plugin>
         </hardware>
@@ -23,16 +25,9 @@
         </joint>
     </ros2_control>
 
-    <!-- <gazebo>
-        <plugin name="gz_ros2_control" filename="gz_ros2_control-system">
-            <parameters>$(find articubot)/config/my_controllers.yaml</parameters>
-        </plugin>
-    </gazebo> -->
-
     <gazebo>
-        <plugin
-            filename="gz_ros2_control-system"
-            name="gz_ros2_control::GazeboSimROS2ControlPlugin">
+        <plugin name="gz_ros2_control::GazeboSimROS2ControlPlugin"
+            filename="libgz_ros2_control-system.so">
             <parameters>$(find articubot)/config/my_controllers.yaml</parameters>
         </plugin>
     </gazebo>
