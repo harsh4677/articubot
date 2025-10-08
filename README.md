@@ -232,3 +232,4 @@ Some visual demostration:
 *    Explore the `slam_toolbox` and `nav2`, or any equivalent.
 *    Implement 3D slam at least in simulation using depth camera, if possible.
 
+# articubot
